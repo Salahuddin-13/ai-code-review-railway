@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Code Review & Rewrite Agent</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Highlight.js for code highlighting -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at 0% 0%, #1e293b 0, #020617 45%, #000 100%);
+      color: #e5e7eb;
+      overflow-x: hidden;
+    }
+
+    /* Animated gradient blobs */
+    .blob {
+      position: fixed;
+      border-radius: 9999px;
+      filter: blur(60px);
+      opacity: 0.5;
+      mix-blend-mode: screen;
+      pointer-events: none;
+      z-index: -1;
+    }
+    .blob-1 {
+      width: 320px;
+      height: 320px;
+      background: #22d3ee;
+      top: -60px;
+      left: -40px;
+      animation: float1 18s infinite alternate ease-in-out;
+    }
+    .blob-2 {
+      width: 380px;
+      height: 380px;
+      background: #a855f7;
+      bottom: -80px;
+      right: -40px;
+      animation: float2 22s infinite alternate ease-in-out;
+    }
+    .blob-3 {
+      width: 260px;
+      height: 260px;
+      background: #4ade80;
+      bottom: 20%;
+      left: 20%;
+      animation: float3 26s infinite alternate ease-in-out;
+    }
+    @keyframes float1 {
+      0% { transform: translate3d(0,0,0) scale(1); }
+      100% { transform: translate3d(40px,60px,0) scale(1.2); }
+    }
+    @keyframes float2 {
+      0% { transform: translate3d(0,0,0) scale(1.1); }
+      100% { transform: translate3d(-40px,-60px,0) scale(1.25); }
+    }
+    @keyframes float3 {
+      0% { transform: translate3d(0,0,0) scale(0.9); }
+      100% { transform: translate3d(20px,-40px,0) scale(1.1); }
+    }
+
+    /* Glassmorphism card */
+    .glass {
+      background: rgba(15, 23, 42, 0.72);
+      border-radius: 24px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      box-shadow:
+        0 16px 40px rgba(15, 23, 42, 0.7),
+        0 0 0 1px rgba(148, 163, 184, 0.15);
+      backdrop-filter: blur(22px) saturate(160%);
+    }
+
+    .code-input {
+      background: radial-gradient(circle at top left, #020617 0, #020617 35%, #020617 100%);
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.8);
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      color: #e5e7eb;
+      resize: vertical;
+    }
+
+    .code-input::placeholder {
+      color: rgba(148, 163, 184, 0.7);
+    }
+
+    .pill {
+      border-radius: 9999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: linear-gradient(120deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.6));
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.6);
+    }
+
+    .btn-primary {
+      background-image: linear-gradient(120deg, #22d3ee, #6366f1);
+      color: #0f172a;
+      box-shadow:
+        0 18px 40px rgba(56, 189, 248, 0.5),
+        0 0 0 1px rgba(15, 23, 42, 0.8);
+      transition: all 0.17s ease-out;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px) translateZ(0);
+      box-shadow:
+        0 20px 50px rgba(96, 165, 250, 0.6),
+        0 0 0 1px rgba(15, 23, 42, 0.9);
+      filter: saturate(1.2);
+    }
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow:
+        0 6px 14px rgba(15, 23, 42, 0.9),
+        0 0 0 1px rgba(15, 23, 42, 1);
+      filter: saturate(0.95);
+    }
+
+    .btn-secondary {
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 9999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      transition: all 0.16s ease-out;
+    }
+    .btn-secondary:hover {
+      background: rgba(15, 23, 42, 0.94);
+      transform: translateY(-1px);
+    }
+
+    .badge {
+      border-radius: 9999px;
+      padding: 2px 10px;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .tab-active {
+      background: rgba(15, 23, 42, 0.95);
+      border-color: rgba(148, 163, 184, 0.85);
+      color: #e5e7eb;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    pre {
+      border-radius: 16px !important;
+      padding: 14px 16px !important;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      background: radial-gradient(circle at top left, #020617 0, #020617 40%, #020617 100%) !important;
+    }
+
+    .scroll-thin::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .scroll-thin::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .scroll-thin::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.6);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Animated blobs -->
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <div class="min-h-screen flex items-center justify-center px-4 py-8">
+    <div class="max-w-6xl w-full space-y-6">
+      <!-- Header -->
+      <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="space-y-2">
+          <div class="inline-flex items-center gap-2 badge pill bg-sky-500/10 border border-sky-400/40 text-sky-200">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            REAL‑TIME GROQ POWERED
+          </div>
+          <div class="flex items-center gap-3">
+            <h1 class="text-3xl md:text-4xl font-semibold tracking-tight text-slate-50">
+              AI Code Review & Rewrite Agent
+            </h1>
+          </div>
+          <p class="text-slate-300/80 text-sm md:text-base max-w-xl">
+            Paste your code, choose what you want, and let the agent review, refactor, or explain it with
+            <span class="text-sky-300 font-medium">Llama 3.3 70B on Groq</span>.
+          </p>
+          <div class="flex flex-wrap gap-2 text-xs text-slate-300/80">
+            <span class="pill px-3 py-1.5 flex items-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Review
+            </span>
+            <span class="pill px-3 py-1.5 flex items-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> Rewrite
+            </span>
+            <span class="pill px-3 py-1.5 flex items-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-violet-400"></span> Explain
+            </span>
+          </div>
+        </div>
+
+        <div class="glass px-4 py-3 flex flex-col gap-1 min-w-[220px]">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-400">Backend status</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/40">
+              LIVE
+            </span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-300">Groq model</span>
+            <span class="text-xs text-sky-300 font-medium">llama‑3.3‑70b‑versatile</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main glass container -->
+      <main class="glass p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <!-- Left: Inputs -->
+        <section class="space-y-4">
+          <!-- Tabs -->
+          <div class="pill flex items-center p-1.5 gap-1 bg-slate-900/80">
+            <button id="tab-review"
+                    class="flex-1 text-xs md:text-sm py-1.5 md:py-2 rounded-full text-center transition-all tab-active">
+              Review Code
+            </button>
+            <button id="tab-rewrite"
+                    class="flex-1 text-xs md:text-sm py-1.5 md:py-2 rounded-full text-center transition-all text-slate-300/80">
+              Rewrite Code
+            </button>
+            <button id="tab-explain"
+                    class="flex-1 text-xs md:text-sm py-1.5 md:py-2 rounded-full text-center transition-all text-slate-300/80">
+              Explain Code
+            </button>
+          </div>
+
+          <!-- Language + Focus -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="space-y-1.5">
+              <label class="text-xs text-slate-300">Language</label>
+              <select id="language"
+                      class="w-full pill bg-slate-950/40 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-sky-400/70">
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="csharp">C#</option>
+                <option value="go">Go</option>
+              </select>
+            </div>
+
+            <div id="focus-wrapper" class="space-y-1.5">
+              <label class="text-xs text-slate-300 flex justify-between">
+                <span>Focus areas (for Review)</span>
+                <button id="focus-reset"
+                        class="text-[11px] text-sky-300 hover:underline">
+                  reset
+                </button>
+              </label>
+              <div class="flex flex-wrap gap-1.5">
+                <button data-focus="bugs"
+                        class="focus-pill pill px-2.5 py-1 text-[11px] text-slate-200/90 bg-slate-900/80 border-slate-700/80">
+                  Bugs
+                </button>
+                <button data-focus="performance"
+                        class="focus-pill pill px-2.5 py-1 text-[11px] text-slate-200/90 bg-slate-900/80 border-slate-700/80">
+                  Performance
+                </button>
+                <button data-focus="security"
+                        class="focus-pill pill px-2.5 py-1 text-[11px] text-slate-200/90 bg-slate-900/80 border-slate-700/80">
+                  Security
+                </button>
+                <button data-focus="best_practices"
+                        class="focus-pill pill px-2.5 py-1 text-[11px] text-slate-200/90 bg-slate-900/80 border-slate-700/80">
+                  Best practices
+                </button>
+                <button data-focus="readability"
+                        class="focus-pill pill px-2.5 py-1 text-[11px] text-slate-200/90 bg-slate-900/80 border-slate-700/80">
+                  Readability
+                </button>
+              </div>
+            </div>
+
+            <div id="instructions-wrapper" class="space-y-1.5 md:col-span-1 hidden">
+              <label class="text-xs text-slate-300">Rewrite instructions</label>
+              <input id="rewrite-instructions"
+                     class="w-full pill bg-slate-950/40 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-sky-400/70"
+                     placeholder="E.g. optimize for performance, add docstrings, make it more modular" />
+            </div>
+          </div>
+
+          <!-- Code input -->
+          <div class="space-y-1.5">
+            <label class="text-xs text-slate-300 flex items-center justify-between">
+              <span>Source code</span>
+              <span class="text-[11px] text-slate-400 flex items-center gap-2">
+                <span id="char-count" class="text-sky-300">0</span>
+                <span>characters</span>
+              </span>
+            </label>
+            <textarea id="code-input" rows="16"
+                      class="w-full code-input px-4 py-3 outline-none scroll-thin"
+                      spellcheck="false"
+                      placeholder="# Paste your function, component, or snippet here and select an action on the right.&#10;def add(a, b):&#10;    return a + b">
+            </textarea>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex gap-2">
+              <button id="run-btn"
+                      class="btn-primary px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2">
+                <span id="run-label">Run review</span>
+                <span id="run-spinner" class="hidden w-4 h-4 border-2 border-slate-900/70 border-t-transparent rounded-full animate-spin"></span>
+              </button>
+              <button id="clear-btn"
+                      class="btn-secondary px-4 py-2 rounded-full text-xs text-slate-200 flex items-center gap-1.5">
+                Clear
+              </button>
+            </div>
+            <div class="text-[11px] text-slate-400 flex items-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+              Responses are generated live using your FastAPI + Groq backend.
+            </div>
+          </div>
+        </section>
+
+        <!-- Right: Output -->
+        <section class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-medium text-slate-100">
+              Output
+            </h2>
+            <div class="flex items-center gap-2 text-[11px] text-slate-400">
+              <button id="copy-output"
+                      class="btn-secondary px-3 py-1 rounded-full flex items-center gap-1.5">
+                <span>Copy</span>
+              </button>
+              <span id="status-pill"
+                    class="badge pill bg-slate-900/80 border border-slate-700/80 text-slate-300">
+                Idle
+              </span>
+            </div>
+          </div>
+
+          <!-- Result cards -->
+          <div id="output-container" class="space-y-3 text-sm text-slate-200">
+            <div class="pill px-4 py-3 text-xs text-slate-300/90">
+              Run a review, rewrite, or explanation to see results here.
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    hljs.configure({ ignoreUnescapedHTML: true });
+
+    const codeInput = document.getElementById("code-input");
+    const charCount = document.getElementById("char-count");
+    const runBtn = document.getElementById("run-btn");
+    const runLabel = document.getElementById("run-label");
+    const runSpinner = document.getElementById("run-spinner");
+    const clearBtn = document.getElementById("clear-btn");
+    const outputContainer = document.getElementById("output-container");
+    const languageSelect = document.getElementById("language");
+    const statusPill = document.getElementById("status-pill");
+    const copyOutputBtn = document.getElementById("copy-output");
+
+    const tabReview = document.getElementById("tab-review");
+    const tabRewrite = document.getElementById("tab-rewrite");
+    const tabExplain = document.getElementById("tab-explain");
+    const focusWrapper = document.getElementById("focus-wrapper");
+    const instructionsWrapper = document.getElementById("instructions-wrapper");
+    const rewriteInstructions = document.getElementById("rewrite-instructions");
+    const focusReset = document.getElementById("focus-reset");
+    const focusPills = Array.from(document.querySelectorAll(".focus-pill"));
+
+    let mode = "review"; // "review" | "rewrite" | "explain"
+    let lastOutputPlain = "";
+
+    function setMode(newMode) {
+      mode = newMode;
+      tabReview.classList.toggle("tab-active", mode === "review");
+      tabRewrite.classList.toggle("tab-active", mode === "rewrite");
+      tabExplain.classList.toggle("tab-active", mode === "explain");
+
+      if (mode === "review") {
+        focusWrapper.classList.remove("hidden");
+        instructionsWrapper.classList.add("hidden");
+        runLabel.textContent = "Run review";
+      } else if (mode === "rewrite") {
+        focusWrapper.classList.add("hidden");
+        instructionsWrapper.classList.remove("hidden");
+        runLabel.textContent = "Rewrite code";
+      } else {
+        focusWrapper.classList.add("hidden");
+        instructionsWrapper.classList.add("hidden");
+        runLabel.textContent = "Explain code";
+      }
+    }
+
+    tabReview.addEventListener("click", () => setMode("review"));
+    tabRewrite.addEventListener("click", () => setMode("rewrite"));
+    tabExplain.addEventListener("click", () => setMode("explain"));
+
+    // character counter
+    codeInput.addEventListener("input", () => {
+      charCount.textContent = codeInput.value.length.toString();
+    });
+
+    // focus chips
+    focusPills.forEach(pill => {
+      pill.addEventListener("click", () => {
+        pill.classList.toggle("bg-sky-500/20");
+        pill.classList.toggle("border-sky-400/70");
+      });
+    });
+
+    focusReset.addEventListener("click", () => {
+      focusPills.forEach(p => {
+        p.classList.remove("bg-sky-500/20", "border-sky-400/70");
+      });
+    });
+
+    function getSelectedFocusAreas() {
+      if (mode !== "review") return [];
+      return focusPills
+        .filter(p => p.classList.contains("bg-sky-500/20"))
+        .map(p => p.dataset.focus);
+    }
+
+    function setLoading(isLoading) {
+      if (isLoading) {
+        runBtn.disabled = true;
+        runSpinner.classList.remove("hidden");
+        statusPill.textContent = "Running…";
+        statusPill.classList.remove("bg-slate-900/80", "text-slate-300");
+        statusPill.classList.add("bg-sky-500/15", "text-sky-200", "border", "border-sky-400/40");
+      } else {
+        runBtn.disabled = false;
+        runSpinner.classList.add("hidden");
+      }
+    }
+
+    function setStatusDone(text, isError = false) {
+      statusPill.textContent = text;
+      statusPill.className =
+        "badge pill " +
+        (isError
+          ? "bg-rose-500/15 text-rose-200 border border-rose-400/40"
+          : "bg-emerald-500/15 text-emerald-200 border border-emerald-400/40");
+    }
+
+    function renderMarkdown(text) {
+      // very basic markdown → HTML (newline to <br> + code blocks via highlight.js)
+      const escaped = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      const withBreaks = escaped.replace(/\n/g, "<br/>");
+      return withBreaks;
+    }
+
+    function renderOutputReview(data) {
+      const { summary, issues } = data;
+      lastOutputPlain = JSON.stringify(data, null, 2);
+
+      const container = document.createElement("div");
+      container.className = "space-y-3 fade-in";
+
+      const summaryCard = document.createElement("div");
+      summaryCard.className = "pill px-4 py-3 bg-slate-950/70";
+      summaryCard.innerHTML = `
+        <div class="text-xs uppercase tracking-wide text-slate-400 mb-1">Summary</div>
+        <div class="text-sm text-slate-100 leading-relaxed">${renderMarkdown(summary)}</div>
+      `;
+      container.appendChild(summaryCard);
+
+      if (issues && issues.length) {
+        const list = document.createElement("div");
+        list.className = "space-y-2";
+
+        issues.forEach((issue, idx) => {
+          const badgeColor =
+            issue.severity === "critical" ? "bg-rose-500/20 text-rose-200 border-rose-400/50" :
+            issue.severity === "high" ? "bg-amber-500/20 text-amber-100 border-amber-400/60" :
+            issue.severity === "medium" ? "bg-sky-500/15 text-sky-100 border-sky-400/50" :
+            "bg-slate-700/40 text-slate-100 border-slate-500/60";
+
+          const card = document.createElement("div");
+          card.className = "glass px-4 py-3 text-sm border border-slate-700/80";
+          card.innerHTML = `
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400">Issue #${idx + 1}</span>
+                <span class="badge ${badgeColor} border px-2 py-0.5">
+                  ${issue.severity.toUpperCase()}
+                </span>
+              </div>
+              ${
+                issue.line != null
+                  ? `<span class="text-[11px] text-slate-400">Line ${issue.line}</span>`
+                  : ""
+              }
+            </div>
+            <div class="text-slate-100 mb-2">${renderMarkdown(issue.description)}</div>
+            <div class="text-[12px] text-slate-300/90">
+              <span class="text-slate-400 uppercase tracking-wide text-[11px]">Suggested fix:</span><br/>
+              ${renderMarkdown(issue.fix)}
+            </div>
+          `;
+          list.appendChild(card);
+        });
+
+        container.appendChild(list);
+      } else {
+        const ok = document.createElement("div");
+        ok.className = "pill px-4 py-3 text-xs text-emerald-200 bg-emerald-500/15 border border-emerald-400/40";
+        ok.textContent = "No issues reported by the model.";
+        container.appendChild(ok);
+      }
+
+      outputContainer.innerHTML = "";
+      outputContainer.appendChild(container);
+    }
+
+    function renderOutputRewrite(data, language) {
+      lastOutputPlain = JSON.stringify(data, null, 2);
+
+      const container = document.createElement("div");
+      container.className = "space-y-3 fade-in";
+
+      const codeCard = document.createElement("div");
+      codeCard.className = "glass px-3 py-3 border border-slate-700/80";
+
+      const pre = document.createElement("pre");
+      const code = document.createElement("code");
+      code.className = language || "";
+      code.textContent = data.rewritten_code;
+      pre.appendChild(code);
+      codeCard.appendChild(pre);
+      container.appendChild(codeCard);
+
+      hljs.highlightElement(code);
+
+      const expCard = document.createElement("div");
+      expCard.className = "pill px-4 py-3 bg-slate-950/70 text-sm text-slate-100";
+      expCard.innerHTML = `
+        <div class="text-xs uppercase tracking-wide text-slate-400 mb-1">Explanation</div>
+        ${renderMarkdown(data.explanation)}
+      `;
+      container.appendChild(expCard);
+
+      if (data.improvements && data.improvements.length) {
+        const ul = document.createElement("ul");
+        ul.className = "list-disc list-inside text-xs text-slate-200/90 pill px-4 py-3 bg-slate-950/70";
+        data.improvements.forEach(item => {
+          const li = document.createElement("li");
+          li.textContent = item;
+          ul.appendChild(li);
+        });
+        container.appendChild(ul);
+      }
+
+      outputContainer.innerHTML = "";
+      outputContainer.appendChild(container);
+    }
+
+    function renderOutputExplain(data) {
+      lastOutputPlain = JSON.stringify(data, null, 2);
+
+      const container = document.createElement("div");
+      container.className = "space-y-3 fade-in";
+
+      const expCard = document.createElement("div");
+      expCard.className = "pill px-4 py-3 bg-slate-950/70 text-sm text-slate-100";
+      expCard.innerHTML = `
+        <div class="text-xs uppercase tracking-wide text-slate-400 mb-1">Explanation</div>
+        ${renderMarkdown(data.explanation)}
+      `;
+      container.appendChild(expCard);
+
+      if (data.steps && data.steps.length) {
+        const stepsCard = document.createElement("div");
+        stepsCard.className = "pill px-4 py-3 bg-slate-950/70 text-xs text-slate-200/90";
+        stepsCard.innerHTML = `<div class="text-[11px] uppercase tracking-wide text-slate-400 mb-1">Step by step</div>`;
+        const ol = document.createElement("ol");
+        ol.className = "list-decimal list-inside";
+        data.steps.forEach(s => {
+          const li = document.createElement("li");
+          li.textContent = s;
+          ol.appendChild(li);
+        });
+        stepsCard.appendChild(ol);
+        container.appendChild(stepsCard);
+      }
+
+      if (data.key_concepts && data.key_concepts.length) {
+        const chips = document.createElement("div");
+        chips.className = "flex flex-wrap gap-1.5";
+        data.key_concepts.forEach(k => {
+          const span = document.createElement("span");
+          span.className = "pill px-2.5 py-1 text-[11px] bg-slate-900/80 border-slate-700/80";
+          span.textContent = k;
+          chips.appendChild(span);
+        });
+        container.appendChild(chips);
+      }
+
+      outputContainer.innerHTML = "";
+      outputContainer.appendChild(container);
+    }
+
+    async function runAction() {
+      const code = codeInput.value.trim();
+      if (!code) {
+        alert("Please paste some code first.");
+        return;
+      }
+
+      const language = languageSelect.value;
+      setLoading(true);
+      setStatusDone("Running…", false);
+
+      let url = "";
+      let body = {};
+
+      if (mode === "review") {
+        url = "/api/review";
+        body = {
+          code,
+          language,
+          focus_areas: getSelectedFocusAreas()
+        };
+      } else if (mode === "rewrite") {
+        url = "/api/rewrite";
+        body = {
+          code,
+          language,
+          instructions: rewriteInstructions.value || "Improve code quality"
+        };
+      } else {
+        url = "/api/explain";
+        body = {
+          code,
+          language
+        };
+      }
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        if (mode === "review") {
+          renderOutputReview(data);
+          setStatusDone("Review complete");
+        } else if (mode === "rewrite") {
+          renderOutputRewrite(data, language);
+          setStatusDone("Rewrite complete");
+        } else {
+          renderOutputExplain(data);
+          setStatusDone("Explanation ready");
+        }
+      } catch (err) {
+        console.error(err);
+        setStatusDone("Error", true);
+        outputContainer.innerHTML = `
+          <div class="pill px-4 py-3 text-xs text-rose-200 bg-rose-950/70 border border-rose-400/40">
+            ${err.message || "Something went wrong."}
+          </div>
+        `;
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    runBtn.addEventListener("click", () => {
+      runAction();
+    });
+
+    clearBtn.addEventListener("click", () => {
+      codeInput.value = "";
+      charCount.textContent = "0";
+      outputContainer.innerHTML = `
+        <div class="pill px-4 py-3 text-xs text-slate-300/90">
+          Paste some code and run a review, rewrite, or explanation to see results here.
+        </div>
+      `;
+      lastOutputPlain = "";
+      setStatusDone("Idle");
+    });
+
+    copyOutputBtn.addEventListener("click", async () => {
+      if (!lastOutputPlain) {
+        alert("No output to copy yet.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(lastOutputPlain);
+        copyOutputBtn.textContent = "Copied!";
+        setTimeout(() => (copyOutputBtn.textContent = "Copy"), 1200);
+      } catch (_) {
+        alert("Could not copy to clipboard.");
+      }
+    });
+
+    // initial
+    setMode("review");
+  </script>
+</body>
+</html>
